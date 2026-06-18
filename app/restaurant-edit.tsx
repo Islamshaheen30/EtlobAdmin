@@ -145,6 +145,10 @@ export default function RestaurantEditScreen() {
     longitude: '',
     delivery_radius: '',
     prep_time_minutes: '',
+    admin_commission_egp: '',
+    daily_closing_time: '22:00',
+    owner_username: '',
+    owner_password: '',
   });
   const [overrideMode, setOverrideMode] = useState<OverrideMode>('auto');
 
@@ -181,6 +185,10 @@ export default function RestaurantEditScreen() {
         longitude: r.longitude?.toString() || '',
         delivery_radius: r.delivery_radius?.toString() || '5',
         prep_time_minutes: r.prep_time_minutes?.toString() || '30',
+        admin_commission_egp: (r as any).admin_commission_egp?.toString() || '0',
+        daily_closing_time: (r as any).daily_closing_time || '22:00',
+        owner_username: (r as any).owner_username || '',
+        owner_password: (r as any).owner_password || '',
       });
       setOverrideMode(toOverrideMode(r.is_open_override));
     };
@@ -235,6 +243,10 @@ export default function RestaurantEditScreen() {
       longitude: form.longitude ? parseFloat(form.longitude) : null,
       delivery_radius: form.delivery_radius ? parseFloat(form.delivery_radius) : 5,
       prep_time_minutes: form.prep_time_minutes ? parseInt(form.prep_time_minutes) : 30,
+      admin_commission_egp: form.admin_commission_egp ? parseFloat(form.admin_commission_egp) : 0,
+      daily_closing_time: form.daily_closing_time,
+      owner_username: form.owner_username.trim(),
+      owner_password: form.owner_password.trim(),
     } as any);
     setSaving(false);
     if (error) {
@@ -502,6 +514,54 @@ export default function RestaurantEditScreen() {
                 );
               })}
             </View>
+          </View>
+
+          {/* ── Admin / Owner Settings ───────────────────────────────────────── */}
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <SectionTitle icon="manage-accounts" label={isRTL ? 'إعدادات المالك والإدارة' : 'Owner & Admin Settings'} colors={colors} isRTL={isRTL} />
+            <FormField
+              label={isRTL ? 'عمولة الإدارة (ج.م)' : 'Admin Commission (EGP)'}
+              value={form.admin_commission_egp}
+              onChange={(v: string) => setForm(f => ({ ...f, admin_commission_egp: v }))}
+              colors={colors} isRTL={isRTL}
+              icon="percent"
+              placeholder="0.00"
+              keyboard="decimal-pad"
+            />
+            <TimeSelector
+              value={form.daily_closing_time}
+              onChange={(v: string) => setForm(f => ({ ...f, daily_closing_time: v }))}
+              label={isRTL ? 'وقت الإغلاق اليومي للحسابات' : 'Daily Accounting Closing Time'}
+              colors={colors}
+              isRTL={isRTL}
+            />
+            <View style={[{ paddingHorizontal: Spacing.md, marginBottom: Spacing.md, borderRadius: Radius.sm, backgroundColor: `${Colors.warning}12`, borderWidth: 1, borderColor: `${Colors.warning}30`, padding: Spacing.sm, marginHorizontal: Spacing.md }]}>
+              <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: Spacing.xs, marginBottom: 4 }]}>
+                <MaterialIcons name="security" size={13} color={Colors.warning} />
+                <Text style={{ color: Colors.warning, fontSize: FontSize.xs, fontWeight: FontWeight.bold }}>
+                  {isRTL ? 'بيانات دخول المالك' : 'Owner Login Credentials'}
+                </Text>
+              </View>
+              <Text style={{ color: colors.textMuted, fontSize: 10 }}>
+                {isRTL ? 'تُستخدم للوصول إلى ملف المطعم من تطبيق المالك' : 'Used for restaurant owner app access'}
+              </Text>
+            </View>
+            <FormField
+              label={isRTL ? 'اسم مستخدم المالك' : 'Owner Username'}
+              value={form.owner_username}
+              onChange={(v: string) => setForm(f => ({ ...f, owner_username: v }))}
+              colors={colors} isRTL={isRTL}
+              icon="person"
+              placeholder="restaurant_owner"
+            />
+            <FormField
+              label={isRTL ? 'كلمة مرور المالك' : 'Owner Password'}
+              value={form.owner_password}
+              onChange={(v: string) => setForm(f => ({ ...f, owner_password: v }))}
+              colors={colors} isRTL={isRTL}
+              icon="lock"
+              placeholder="••••••••"
+            />
           </View>
 
           {/* ── Delivery & Prep Settings ─────────────────────────────────────── */}

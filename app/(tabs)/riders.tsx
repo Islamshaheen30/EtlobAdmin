@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, StyleSheet, Text, Pressable, TextInput, FlatList,
   Modal, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform,
@@ -15,14 +15,22 @@ import { StatusBadge, TopBar } from '@/components';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 
 type RiderStatusFilter = 'all' | 'online' | 'offline' | 'on_delivery';
+type VehicleType = 'motorcycle' | 'bicycle' | 'scooter';
 
 const VEHICLES = ['Motorcycle', 'Bicycle', 'Car', 'Scooter'];
+const VEHICLE_TYPES: VehicleType[] = ['motorcycle', 'bicycle', 'scooter'];
 const AREAS = ['Maadi', 'Heliopolis', 'New Cairo', 'Zamalek', 'Downtown', 'Nasr City', 'Giza'];
 
 const STATUS_COLORS: Record<string, string> = {
   online: Colors.success,
   offline: '#888',
   on_delivery: Colors.info,
+};
+
+const VEHICLE_TYPE_META: Record<VehicleType, { icon: string; labelEn: string; labelAr: string; color: string }> = {
+  motorcycle: { icon: 'two-wheeler',       labelEn: 'Motorcycle', labelAr: 'دراجة نارية',  color: Colors.brand },
+  bicycle:    { icon: 'pedal-bike',         labelEn: 'Bicycle',    labelAr: 'دراجة هوائية', color: Colors.success },
+  scooter:    { icon: 'electric-scooter',   labelEn: 'Scooter',    labelAr: 'سكوتر',         color: Colors.info },
 };
 
 function generatePassword(): string {
@@ -33,7 +41,7 @@ function generatePassword(): string {
 export default function RidersScreen() {
   const { colors, t, isRTL, theme } = useApp();
   const { showAlert } = useAlert();
-  const { riders, loading, error, loadRiders, createRider, updateRider, deleteRider } = useRidersManager();
+  const { riders, loading, loadRiders, createRider, updateRider, deleteRider } = useRidersManager();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<RiderStatusFilter>('all');
@@ -41,16 +49,18 @@ export default function RidersScreen() {
   const [editRider, setEditRider] = useState<RiderProfile | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Add form state
   const [form, setForm] = useState({
     name: '', name_ar: '', email: '', password: '',
-    phone: '', area: AREAS[0], vehicle: VEHICLES[0],
+    phone: '', area: AREAS[0], vehicle: VEHICLES[0], vehicle_type: 'motorcycle' as VehicleType,
   });
 
-  // Edit form state
   const [editForm, setEditForm] = useState({
-    name: '', name_ar: '', phone: '', area: AREAS[0], vehicle: VEHICLES[0],
+    name: '', name_ar: '', phone: '',
+    area: AREAS[0], vehicle: VEHICLES[0],
+    vehicle_type: 'motorcycle' as VehicleType,
     max_simultaneous_orders: '3',
+    commission_egp: '0',
+    daily_closing_time: '22:00',
   });
 
   useFocusEffect(useCallback(() => { loadRiders(); }, []));
@@ -71,10 +81,7 @@ export default function RidersScreen() {
   }, [riders, search, statusFilter]);
 
   const statusLabel: Record<string, string> = {
-    all: t('allStatuses'),
-    online: t('online'),
-    offline: t('offline'),
-    on_delivery: t('onDelivery'),
+    all: t('allStatuses'), online: t('online'), offline: t('offline'), on_delivery: t('onDelivery'),
   };
 
   const onlineCount = riders.filter(r => r.status === 'online').length;
@@ -94,13 +101,14 @@ export default function RidersScreen() {
       phone: form.phone.trim(),
       area: form.area,
       vehicle: form.vehicle,
-    });
+      vehicle_type: form.vehicle_type,
+    } as any);
     setSaving(false);
     if (err) {
       showAlert(t('error'), err);
     } else {
       setShowAddModal(false);
-      setForm({ name: '', name_ar: '', email: '', password: '', phone: '', area: AREAS[0], vehicle: VEHICLES[0] });
+      setForm({ name: '', name_ar: '', email: '', password: '', phone: '', area: AREAS[0], vehicle: VEHICLES[0], vehicle_type: 'motorcycle' });
       showAlert(t('success'), isRTL ? 'تم إضافة المندوب بنجاح' : 'Rider added successfully');
     }
   };
@@ -117,7 +125,10 @@ export default function RidersScreen() {
       phone: editForm.phone.trim(),
       area: editForm.area,
       vehicle: editForm.vehicle,
+      vehicle_type: editForm.vehicle_type,
       max_simultaneous_orders: editForm.max_simultaneous_orders ? parseInt(editForm.max_simultaneous_orders) : 3,
+      commission_egp: editForm.commission_egp ? parseFloat(editForm.commission_egp) : 0,
+      daily_closing_time: editForm.daily_closing_time,
     } as any);
     setSaving(false);
     if (err) {
@@ -135,8 +146,7 @@ export default function RidersScreen() {
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: isRTL ? 'حذف' : 'Delete',
-          style: 'destructive',
+          text: isRTL ? 'حذف' : 'Delete', style: 'destructive',
           onPress: async () => {
             const { error: err } = await deleteRider(rider.id);
             if (err) showAlert(t('error'), err);
@@ -147,65 +157,80 @@ export default function RidersScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: RiderProfile }) => (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {/* Header */}
-      <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <View style={[styles.avatar, { backgroundColor: STATUS_COLORS[item.status] }]}>
-          <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
-            {isRTL ? (item.name_ar || item.name) : item.name}
-          </Text>
-          <Text style={[styles.email, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
-            {item.email || '—'}
-          </Text>
-          <View style={[styles.subRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-            <MaterialIcons name="location-on" size={12} color={colors.icon} />
-            <Text style={[styles.meta, { color: colors.textMuted }]}>{item.area || '—'} · {item.vehicle || '—'}</Text>
+  const openEdit = (item: RiderProfile) => {
+    setEditRider(item);
+    setEditForm({
+      name: item.name, name_ar: item.name_ar || '',
+      phone: item.phone || '', area: item.area || AREAS[0],
+      vehicle: item.vehicle || VEHICLES[0],
+      vehicle_type: ((item as any).vehicle_type || 'motorcycle') as VehicleType,
+      max_simultaneous_orders: (item as any).max_simultaneous_orders?.toString() || '3',
+      commission_egp: (item as any).commission_egp?.toString() || '0',
+      daily_closing_time: (item as any).daily_closing_time || '22:00',
+    });
+  };
+
+  const renderItem = ({ item }: { item: RiderProfile }) => {
+    const vtMeta = VEHICLE_TYPE_META[((item as any).vehicle_type || 'motorcycle') as VehicleType];
+    return (
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <View style={[styles.avatar, { backgroundColor: STATUS_COLORS[item.status] }]}>
+            <Text style={styles.avatarText}>{item.name[0]?.toUpperCase()}</Text>
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
+              {isRTL ? (item.name_ar || item.name) : item.name}
+            </Text>
+            <Text style={[styles.email, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
+              {item.email || '—'}
+            </Text>
+            <View style={[styles.subRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <MaterialIcons name="location-on" size={12} color={colors.icon} />
+              <Text style={[styles.meta, { color: colors.textMuted }]}>{item.area || '—'}</Text>
+              <View style={[styles.vtBadge, { backgroundColor: `${vtMeta.color}20` }]}>
+                <MaterialIcons name={vtMeta.icon as any} size={10} color={vtMeta.color} />
+                <Text style={[styles.vtText, { color: vtMeta.color }]}>
+                  {isRTL ? vtMeta.labelAr : vtMeta.labelEn}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <StatusBadge status={item.status} label={statusLabel[item.status] || item.status} small />
         </View>
-        <StatusBadge status={item.status} label={statusLabel[item.status] || item.status} small />
-      </View>
 
-      {/* Stats */}
-      <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
-        <RiderStat icon="delivery-dining" value={item.today_deliveries?.toString() || '0'} label={t('todayDeliveries')} color={Colors.brand} colors={colors} />
-        <RiderStat icon="history" value={item.total_deliveries?.toString() || '0'} label={t('totalDeliveries')} color={Colors.info} colors={colors} />
-        <RiderStat icon="star" value={(item.rating || 5).toFixed(1)} label={t('rating')} color={Colors.warning} colors={colors} />
-        <RiderStat icon="account-balance-wallet" value={`${item.earnings || 0}`} label={t('earnings')} color={Colors.success} colors={colors} />
-      </View>
+        <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
+          <RiderStat icon="delivery-dining" value={item.today_deliveries?.toString() || '0'} label={t('todayDeliveries')} color={Colors.brand} colors={colors} />
+          <RiderStat icon="history" value={item.total_deliveries?.toString() || '0'} label={t('totalDeliveries')} color={Colors.info} colors={colors} />
+          <RiderStat icon="star" value={(item.rating || 5).toFixed(1)} label={t('rating')} color={Colors.warning} colors={colors} />
+          <RiderStat icon="account-balance-wallet" value={`${item.earnings || 0}`} label={t('earnings')} color={Colors.success} colors={colors} />
+        </View>
 
-      {/* Actions */}
-      <View style={[styles.cardActions, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
-        <Pressable
-          style={[styles.actionBtn, { backgroundColor: `${Colors.brand}22`, borderColor: `${Colors.brand}44` }]}
-          onPress={() => {
-            setEditRider(item);
-            setEditForm({ name: item.name, name_ar: item.name_ar || '', phone: item.phone || '', area: item.area || AREAS[0], vehicle: item.vehicle || VEHICLES[0], max_simultaneous_orders: (item as any).max_simultaneous_orders?.toString() || '3' });
-          }}
-        >
-          <MaterialIcons name="edit" size={14} color={Colors.brand} />
-          <Text style={[styles.actionText, { color: Colors.brand }]}>{isRTL ? 'تعديل' : 'Edit'}</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.actionBtn, { backgroundColor: `${Colors.danger}22`, borderColor: `${Colors.danger}44` }]}
-          onPress={() => handleDelete(item)}
-        >
-          <MaterialIcons name="delete" size={14} color={Colors.danger} />
-          <Text style={[styles.actionText, { color: Colors.danger }]}>{isRTL ? 'حذف' : 'Delete'}</Text>
-        </Pressable>
+        <View style={[styles.cardActions, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
+          <Pressable
+            style={[styles.actionBtn, { backgroundColor: `${Colors.brand}22`, borderColor: `${Colors.brand}44` }]}
+            onPress={() => openEdit(item)}
+          >
+            <MaterialIcons name="edit" size={14} color={Colors.brand} />
+            <Text style={[styles.actionText, { color: Colors.brand }]}>{isRTL ? 'تعديل' : 'Edit'}</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.actionBtn, { backgroundColor: `${Colors.danger}22`, borderColor: `${Colors.danger}44` }]}
+            onPress={() => handleDelete(item)}
+          >
+            <MaterialIcons name="delete" size={14} color={Colors.danger} />
+            <Text style={[styles.actionText, { color: Colors.danger }]}>{isRTL ? 'حذف' : 'Delete'}</Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.bg }]} edges={['top']}>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <TopBar title={t('riders')} />
 
-      {/* Live Summary */}
       <View style={[styles.summary, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <SummaryChip label={t('online')} value={onlineCount} color={Colors.success} colors={colors} />
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -219,7 +244,6 @@ export default function RidersScreen() {
         </Pressable>
       </View>
 
-      {/* Search */}
       <View style={[styles.searchWrap, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={[styles.searchBar, { backgroundColor: colors.inputBg, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <MaterialIcons name="search" size={18} color={colors.icon} />
@@ -233,7 +257,6 @@ export default function RidersScreen() {
         </View>
       </View>
 
-      {/* Filter */}
       <View style={[styles.filterWrap, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={styles.filterScroll}>
           {(['all', 'online', 'on_delivery', 'offline'] as RiderStatusFilter[]).map(s => (
@@ -274,7 +297,7 @@ export default function RidersScreen() {
         />
       )}
 
-      {/* ── ADD MODAL ─────────────────────────────────────────────────────── */}
+      {/* ADD MODAL */}
       <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
         <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
@@ -302,7 +325,6 @@ export default function RidersScreen() {
                 </View>
                 <FormField label={isRTL ? 'رقم الهاتف' : 'Phone'} value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} colors={colors} isRTL={isRTL} icon="phone" placeholder="+20 1XX XXX XXXX" keyboard="phone-pad" />
 
-                {/* Area picker */}
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{t('area')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
                   <View style={{ flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: 2 }}>
@@ -314,14 +336,36 @@ export default function RidersScreen() {
                   </View>
                 </ScrollView>
 
-                {/* Vehicle picker */}
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{isRTL ? 'المركبة' : 'Vehicle'}</Text>
-                <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md }}>
                   {VEHICLES.map(v => (
                     <Pressable key={v} style={[styles.optionChip, { backgroundColor: form.vehicle === v ? Colors.brand : colors.inputBg, borderColor: form.vehicle === v ? Colors.brand : colors.border }]} onPress={() => setForm(f => ({ ...f, vehicle: v }))}>
                       <Text style={[styles.optionText, { color: form.vehicle === v ? '#000' : colors.textSecondary }]}>{v}</Text>
                     </Pressable>
                   ))}
+                </View>
+
+                {/* Vehicle Type for pricing */}
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>
+                  {isRTL ? 'نوع المركبة (للتسعيرة)' : 'Vehicle Type (for pricing)'}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+                  {VEHICLE_TYPES.map(vt => {
+                    const m = VEHICLE_TYPE_META[vt];
+                    const sel = form.vehicle_type === vt;
+                    return (
+                      <Pressable
+                        key={vt}
+                        style={[styles.optionChip, { flex: 1, backgroundColor: sel ? m.color : colors.inputBg, borderColor: sel ? m.color : colors.border, alignItems: 'center', gap: 2 }]}
+                        onPress={() => setForm(f => ({ ...f, vehicle_type: vt }))}
+                      >
+                        <MaterialIcons name={m.icon as any} size={14} color={sel ? '#000' : colors.textMuted} />
+                        <Text style={[styles.optionText, { color: sel ? '#000' : colors.textSecondary }]}>
+                          {isRTL ? m.labelAr : m.labelEn}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
 
                 <Pressable style={[styles.saveBtn, { backgroundColor: Colors.brand, opacity: saving ? 0.7 : 1 }]} onPress={handleAdd} disabled={saving}>
@@ -338,7 +382,7 @@ export default function RidersScreen() {
         </View>
       </Modal>
 
-      {/* ── EDIT MODAL ────────────────────────────────────────────────────── */}
+      {/* EDIT MODAL */}
       <Modal visible={!!editRider} transparent animationType="slide" onRequestClose={() => setEditRider(null)}>
         <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
@@ -356,6 +400,8 @@ export default function RidersScreen() {
                 <FormField label={isRTL ? 'الاسم (عربي)' : 'Name (Arabic)'} value={editForm.name_ar} onChange={v => setEditForm(f => ({ ...f, name_ar: v }))} colors={colors} isRTL={isRTL} icon="person" placeholder="أحمد حسن" rtlInput />
                 <FormField label={isRTL ? 'رقم الهاتف' : 'Phone'} value={editForm.phone} onChange={v => setEditForm(f => ({ ...f, phone: v }))} colors={colors} isRTL={isRTL} icon="phone" placeholder="+20 1XX XXX XXXX" keyboard="phone-pad" />
                 <FormField label={isRTL ? 'الحد الأقصى للطلبات المتزامنة' : 'Max Simultaneous Orders'} value={editForm.max_simultaneous_orders} onChange={v => setEditForm(f => ({ ...f, max_simultaneous_orders: v }))} colors={colors} isRTL={isRTL} icon="layers" placeholder="3" keyboard="number-pad" />
+                <FormField label={isRTL ? 'عمولة المندوب (ج.م)' : 'Rider Commission (EGP)'} value={editForm.commission_egp} onChange={v => setEditForm(f => ({ ...f, commission_egp: v }))} colors={colors} isRTL={isRTL} icon="percent" placeholder="0.00" keyboard="decimal-pad" />
+                <FormField label={isRTL ? 'وقت الإغلاق اليومي' : 'Daily Closing Time'} value={editForm.daily_closing_time} onChange={v => setEditForm(f => ({ ...f, daily_closing_time: v }))} colors={colors} isRTL={isRTL} icon="schedule" placeholder="22:00" />
 
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{t('area')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
@@ -369,12 +415,35 @@ export default function RidersScreen() {
                 </ScrollView>
 
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{isRTL ? 'المركبة' : 'Vehicle'}</Text>
-                <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md }}>
                   {VEHICLES.map(v => (
                     <Pressable key={v} style={[styles.optionChip, { backgroundColor: editForm.vehicle === v ? Colors.brand : colors.inputBg, borderColor: editForm.vehicle === v ? Colors.brand : colors.border }]} onPress={() => setEditForm(f => ({ ...f, vehicle: v }))}>
                       <Text style={[styles.optionText, { color: editForm.vehicle === v ? '#000' : colors.textSecondary }]}>{v}</Text>
                     </Pressable>
                   ))}
+                </View>
+
+                {/* Vehicle Type enum for pricing */}
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>
+                  {isRTL ? 'نوع المركبة (للتسعيرة)' : 'Vehicle Type (for pricing)'}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg }}>
+                  {VEHICLE_TYPES.map(vt => {
+                    const m = VEHICLE_TYPE_META[vt];
+                    const sel = editForm.vehicle_type === vt;
+                    return (
+                      <Pressable
+                        key={vt}
+                        style={[styles.optionChip, { flex: 1, backgroundColor: sel ? m.color : colors.inputBg, borderColor: sel ? m.color : colors.border, alignItems: 'center', gap: 2 }]}
+                        onPress={() => setEditForm(f => ({ ...f, vehicle_type: vt }))}
+                      >
+                        <MaterialIcons name={m.icon as any} size={14} color={sel ? '#000' : colors.textMuted} />
+                        <Text style={[styles.optionText, { color: sel ? '#000' : colors.textSecondary }]}>
+                          {isRTL ? m.labelAr : m.labelEn}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
 
                 <Pressable style={[styles.saveBtn, { backgroundColor: Colors.brand, opacity: saving ? 0.7 : 1 }]} onPress={handleEdit} disabled={saving}>
@@ -466,8 +535,10 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   name: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   email: { fontSize: 10, marginTop: 1 },
-  subRow: { alignItems: 'center', gap: 3, marginTop: 2 },
+  subRow: { alignItems: 'center', gap: 4, marginTop: 2 },
   meta: { fontSize: FontSize.xs },
+  vtBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full },
+  vtText: { fontSize: 9, fontWeight: FontWeight.bold },
   statsRow: { flexDirection: 'row', borderTopWidth: 1, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
   cardActions: { flexDirection: 'row', borderTopWidth: 1, gap: Spacing.sm, padding: Spacing.sm },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 8, borderRadius: Radius.sm, borderWidth: 1 },
@@ -477,7 +548,7 @@ const styles = StyleSheet.create({
   addEmptyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.full, marginTop: Spacing.sm },
   addEmptyText: { color: '#000', fontWeight: FontWeight.bold },
   overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center' },
-  sheet: { width: '100%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, maxHeight: '85%' },
+  sheet: { width: '100%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: Spacing.lg, maxHeight: '90%' },
   sheetHeader: { justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg },
   sheetTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
   fieldLabel: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, marginBottom: Spacing.xs },
