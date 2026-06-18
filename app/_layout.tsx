@@ -20,8 +20,6 @@ export default function RootLayout() {
                 <Stack.Screen name="restaurant-edit" options={{ headerShown: false }} />
                 <Stack.Screen name="offers" options={{ headerShown: false }} />
                 <Stack.Screen name="admin-settings" options={{ headerShown: false }} />
-                <Stack.Screen name="restaurant-staff" options={{ headerShown: false }} />
-                <Stack.Screen name="delivery-pricing" options={{ headerShown: false }} />
               </Stack>
             </OrdersProvider>
           </AuthProvider>
