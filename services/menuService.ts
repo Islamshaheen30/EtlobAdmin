@@ -8,6 +8,7 @@ export interface Restaurant {
   area: string;
   phone: string;
   status: 'active' | 'inactive' | 'suspended';
+  operational_status: 'open' | 'closed' | 'busy';
   rating: number;
   total_orders: number;
   today_orders: number;
@@ -17,7 +18,46 @@ export interface Restaurant {
   opening_hours?: string;
   closing_hours?: string;
   is_open_override?: boolean | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  delivery_radius?: number;
+  prep_time_minutes?: number;
   created_at?: string;
+}
+
+export interface Offer {
+  id: string;
+  restaurant_id: string;
+  title: string;
+  title_ar: string;
+  description: string;
+  description_ar: string;
+  image_url?: string | null;
+  discount_percent?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateOfferPayload {
+  restaurant_id: string;
+  title: string;
+  title_ar: string;
+  description: string;
+  description_ar: string;
+  image_url?: string | null;
+  discount_percent?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active: boolean;
+}
+
+export interface AdminSetting {
+  id: string;
+  key: string;
+  value: string | null;
 }
 
 export interface MenuCategory {
@@ -27,6 +67,13 @@ export interface MenuCategory {
   name_ar: string;
   sort_order: number;
   created_at?: string;
+}
+
+export interface MenuItemAddon {
+  name: string;
+  name_ar: string;
+  price: number;
+  is_required: boolean;
 }
 
 export interface MenuItem {
@@ -41,6 +88,7 @@ export interface MenuItem {
   images: string[];
   is_available: boolean;
   sort_order: number;
+  addons: MenuItemAddon[];
   created_at?: string;
   updated_at?: string;
 }
@@ -55,6 +103,7 @@ export interface CreateMenuItemPayload {
   price: number;
   images: string[];
   is_available: boolean;
+  addons?: MenuItemAddon[];
 }
 
 export interface CreateCategoryPayload {
@@ -195,6 +244,81 @@ export const menuService = {
     } catch (e: any) {
       return { url: null, error: e.message || 'Upload failed' };
     }
+  },
+};
+
+// ── Offers Service ────────────────────────────────────────────────────────────
+export const offerService = {
+  async fetchAll(restaurantId?: string): Promise<{ data: Offer[] | null; error: string | null }> {
+    let query = getClient().from('offers').select('*').order('created_at', { ascending: false });
+    if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+    const { data, error } = await query;
+    if (error) return { data: null, error: error.message };
+    return { data, error: null };
+  },
+
+  async create(payload: CreateOfferPayload): Promise<{ data: Offer | null; error: string | null }> {
+    const { data, error } = await getClient().from('offers').insert(payload).select().single();
+    if (error) return { data: null, error: error.message };
+    return { data, error: null };
+  },
+
+  async update(id: string, updates: Partial<Offer>): Promise<{ error: string | null }> {
+    const { error } = await getClient().from('offers').update(updates).eq('id', id);
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  async delete(id: string): Promise<{ error: string | null }> {
+    const { error } = await getClient().from('offers').delete().eq('id', id);
+    if (error) return { error: error.message };
+    return { error: null };
+  },
+
+  async uploadImage(offerId: string, fileUri: string, fileName: string): Promise<{ url: string | null; error: string | null }> {
+    const supabase = getClient();
+    try {
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const base64Data = base64.split(',')[1];
+      const uint8Array = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      const path = `offers/${offerId || 'new'}/${Date.now()}-${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('menu-images')
+        .upload(path, uint8Array, { contentType: blob.type || 'image/jpeg', upsert: false });
+      if (uploadError) return { url: null, error: uploadError.message };
+      const { data } = supabase.storage.from('menu-images').getPublicUrl(path);
+      return { url: data.publicUrl, error: null };
+    } catch (e: any) {
+      return { url: null, error: e.message || 'Upload failed' };
+    }
+  },
+};
+
+// ── Admin Settings Service ─────────────────────────────────────────────────────
+export const adminSettingsService = {
+  async getAll(): Promise<{ data: AdminSetting[] | null; error: string | null }> {
+    const { data, error } = await getClient().from('admin_settings').select('*').order('key');
+    if (error) return { data: null, error: error.message };
+    return { data, error: null };
+  },
+
+  async get(key: string): Promise<{ value: string | null; error: string | null }> {
+    const { data, error } = await getClient().from('admin_settings').select('value').eq('key', key).single();
+    if (error) return { value: null, error: error.message };
+    return { value: data?.value ?? null, error: null };
+  },
+
+  async upsert(key: string, value: string): Promise<{ error: string | null }> {
+    const { error } = await getClient().from('admin_settings').upsert({ key, value }, { onConflict: 'key' });
+    if (error) return { error: error.message };
+    return { error: null };
   },
 };
 

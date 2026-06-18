@@ -50,6 +50,7 @@ export default function RidersScreen() {
   // Edit form state
   const [editForm, setEditForm] = useState({
     name: '', name_ar: '', phone: '', area: AREAS[0], vehicle: VEHICLES[0],
+    max_simultaneous_orders: '3',
   });
 
   useFocusEffect(useCallback(() => { loadRiders(); }, []));
@@ -116,7 +117,8 @@ export default function RidersScreen() {
       phone: editForm.phone.trim(),
       area: editForm.area,
       vehicle: editForm.vehicle,
-    });
+      max_simultaneous_orders: editForm.max_simultaneous_orders ? parseInt(editForm.max_simultaneous_orders) : 3,
+    } as any);
     setSaving(false);
     if (err) {
       showAlert(t('error'), err);
@@ -181,7 +183,7 @@ export default function RidersScreen() {
           style={[styles.actionBtn, { backgroundColor: `${Colors.brand}22`, borderColor: `${Colors.brand}44` }]}
           onPress={() => {
             setEditRider(item);
-            setEditForm({ name: item.name, name_ar: item.name_ar || '', phone: item.phone || '', area: item.area || AREAS[0], vehicle: item.vehicle || VEHICLES[0] });
+            setEditForm({ name: item.name, name_ar: item.name_ar || '', phone: item.phone || '', area: item.area || AREAS[0], vehicle: item.vehicle || VEHICLES[0], max_simultaneous_orders: (item as any).max_simultaneous_orders?.toString() || '3' });
           }}
         >
           <MaterialIcons name="edit" size={14} color={Colors.brand} />
@@ -353,6 +355,7 @@ export default function RidersScreen() {
                 <FormField label={isRTL ? 'الاسم (English)' : 'Name (English)'} value={editForm.name} onChange={v => setEditForm(f => ({ ...f, name: v }))} colors={colors} isRTL={isRTL} icon="person" placeholder="Ahmed Hassan" />
                 <FormField label={isRTL ? 'الاسم (عربي)' : 'Name (Arabic)'} value={editForm.name_ar} onChange={v => setEditForm(f => ({ ...f, name_ar: v }))} colors={colors} isRTL={isRTL} icon="person" placeholder="أحمد حسن" rtlInput />
                 <FormField label={isRTL ? 'رقم الهاتف' : 'Phone'} value={editForm.phone} onChange={v => setEditForm(f => ({ ...f, phone: v }))} colors={colors} isRTL={isRTL} icon="phone" placeholder="+20 1XX XXX XXXX" keyboard="phone-pad" />
+                <FormField label={isRTL ? 'الحد الأقصى للطلبات المتزامنة' : 'Max Simultaneous Orders'} value={editForm.max_simultaneous_orders} onChange={v => setEditForm(f => ({ ...f, max_simultaneous_orders: v }))} colors={colors} isRTL={isRTL} icon="layers" placeholder="3" keyboard="number-pad" />
 
                 <Text style={[styles.fieldLabel, { color: colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }]}>{t('area')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>

@@ -80,6 +80,9 @@ export function TopBar({ title, subtitle, showBadge, badgeCount }: TopBarProps) 
         <Pressable style={[styles.iconBtn, { backgroundColor: `${Colors.brand}18` }]} onPress={() => setShowChangePw(true)}>
           <MaterialIcons name="lock-reset" size={18} color={Colors.brand} />
         </Pressable>
+        <Pressable style={[styles.iconBtn, { backgroundColor: `${Colors.info}18` }]} onPress={() => router.push('/admin-settings')}>
+          <MaterialIcons name="settings" size={18} color={Colors.info} />
+        </Pressable>
         <Pressable style={[styles.iconBtn, { backgroundColor: `${Colors.danger}22` }]} onPress={handleLogout}>
           <MaterialIcons name="logout" size={18} color={Colors.danger} />
         </Pressable>

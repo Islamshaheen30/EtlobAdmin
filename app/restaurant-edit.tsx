@@ -140,6 +140,11 @@ export default function RestaurantEditScreen() {
     is_open_override: null as boolean | null,
     logo_url: null as string | null,
     status: 'active' as 'active' | 'inactive' | 'suspended',
+    operational_status: 'open' as 'open' | 'closed' | 'busy',
+    latitude: '',
+    longitude: '',
+    delivery_radius: '',
+    prep_time_minutes: '',
   });
   const [overrideMode, setOverrideMode] = useState<OverrideMode>('auto');
 
@@ -171,6 +176,11 @@ export default function RestaurantEditScreen() {
         is_open_override: r.is_open_override ?? null,
         logo_url: r.logo_url || null,
         status: r.status || 'active',
+        operational_status: r.operational_status || 'open',
+        latitude: r.latitude?.toString() || '',
+        longitude: r.longitude?.toString() || '',
+        delivery_radius: r.delivery_radius?.toString() || '5',
+        prep_time_minutes: r.prep_time_minutes?.toString() || '30',
       });
       setOverrideMode(toOverrideMode(r.is_open_override));
     };
@@ -220,6 +230,11 @@ export default function RestaurantEditScreen() {
       is_open_override: form.is_open_override,
       logo_url: form.logo_url,
       status: form.status,
+      operational_status: form.operational_status,
+      latitude: form.latitude ? parseFloat(form.latitude) : null,
+      longitude: form.longitude ? parseFloat(form.longitude) : null,
+      delivery_radius: form.delivery_radius ? parseFloat(form.delivery_radius) : 5,
+      prep_time_minutes: form.prep_time_minutes ? parseInt(form.prep_time_minutes) : 30,
     } as any);
     setSaving(false);
     if (error) {
@@ -421,7 +436,42 @@ export default function RestaurantEditScreen() {
             ) : null}
           </View>
 
-          {/* ── Restaurant Status (active/inactive/suspended) ─────────────────── */}
+          {/* ── Operational Status (open/closed/busy) ────────────────────────── */}
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <SectionTitle icon="storefront" label={isRTL ? 'الحالة التشغيلية (للعملاء)' : 'Operational Status (Customer-Facing)'} colors={colors} isRTL={isRTL} />
+            <Text style={[styles.overrideDesc, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left', marginBottom: Spacing.sm }]}>
+              {isRTL ? 'الحالة التي يراها العملاء في التطبيق' : 'Status visible to customers in the app'}
+            </Text>
+            <View style={[styles.overridePills, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              {(['open', 'closed', 'busy'] as const).map(s => {
+                const selected = form.operational_status === s;
+                const color = s === 'open' ? Colors.success : s === 'busy' ? Colors.warning : Colors.danger;
+                const iconName = s === 'open' ? 'check-circle' : s === 'busy' ? 'hourglass-top' : 'cancel';
+                const labelMap = {
+                  open: isRTL ? 'مفتوح' : 'Open',
+                  closed: isRTL ? 'مغلق' : 'Closed',
+                  busy: isRTL ? 'مشغول' : 'Busy',
+                };
+                return (
+                  <Pressable
+                    key={s}
+                    style={[
+                      styles.overridePill,
+                      { flex: 1, borderColor: selected ? color : colors.border, backgroundColor: selected ? `${color}20` : colors.inputBg },
+                    ]}
+                    onPress={() => setForm(f => ({ ...f, operational_status: s }))}
+                  >
+                    <MaterialIcons name={iconName} size={16} color={selected ? color : colors.textMuted} />
+                    <Text style={[styles.overridePillText, { color: selected ? color : colors.textSecondary }]}>
+                      {labelMap[s]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── Platform Status (active/inactive/suspended) ──────────────────── */}
           <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <SectionTitle icon="business" label={isRTL ? 'حالة المطعم في المنصة' : 'Platform Status'} colors={colors} isRTL={isRTL} />
             <Text style={[styles.overrideDesc, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left', marginBottom: Spacing.sm }]}>
@@ -451,6 +501,70 @@ export default function RestaurantEditScreen() {
                   </Pressable>
                 );
               })}
+            </View>
+          </View>
+
+          {/* ── Delivery & Prep Settings ─────────────────────────────────────── */}
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <SectionTitle icon="local-shipping" label={isRTL ? 'إعدادات التوصيل' : 'Delivery Settings'} colors={colors} isRTL={isRTL} />
+            <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }]}>
+              <View style={{ flex: 1 }}>
+                <FormField
+                  label={isRTL ? 'نطاق التوصيل (كم)' : 'Delivery Radius (km)'}
+                  value={form.delivery_radius}
+                  onChange={(v: string) => setForm(f => ({ ...f, delivery_radius: v }))}
+                  colors={colors} isRTL={isRTL}
+                  icon="radio-button-checked"
+                  placeholder="5.0"
+                  keyboard="decimal-pad"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormField
+                  label={isRTL ? 'وقت التحضير (دقيقة)' : 'Prep Time (min)'}
+                  value={form.prep_time_minutes}
+                  onChange={(v: string) => setForm(f => ({ ...f, prep_time_minutes: v }))}
+                  colors={colors} isRTL={isRTL}
+                  icon="hourglass-empty"
+                  placeholder="30"
+                  keyboard="number-pad"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* ── Location ─────────────────────────────────────────────────────── */}
+          <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <SectionTitle icon="location-on" label={isRTL ? 'الموقع الجغرافي' : 'GPS Location'} colors={colors} isRTL={isRTL} />
+            <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: Spacing.md, paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }]}>
+              <View style={{ flex: 1 }}>
+                <FormField
+                  label={isRTL ? 'خط العرض' : 'Latitude'}
+                  value={form.latitude}
+                  onChange={(v: string) => setForm(f => ({ ...f, latitude: v }))}
+                  colors={colors} isRTL={isRTL}
+                  icon="my-location"
+                  placeholder="30.0444"
+                  keyboard="decimal-pad"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <FormField
+                  label={isRTL ? 'خط الطول' : 'Longitude'}
+                  value={form.longitude}
+                  onChange={(v: string) => setForm(f => ({ ...f, longitude: v }))}
+                  colors={colors} isRTL={isRTL}
+                  icon="explore"
+                  placeholder="31.2357"
+                  keyboard="decimal-pad"
+                />
+              </View>
+            </View>
+            <View style={[styles.overrideWarning, { backgroundColor: `${Colors.info}15`, borderColor: `${Colors.info}40`, marginHorizontal: Spacing.md, marginBottom: Spacing.md }]}>
+              <MaterialIcons name="info-outline" size={13} color={Colors.info} />
+              <Text style={[styles.overrideWarningText, { color: Colors.info }]}>
+                {isRTL ? 'يُستخدم لحساب مسافة التوصيل وترشيح المطاعم القريبة' : 'Used to calculate delivery distance and filter nearby restaurants'}
+              </Text>
             </View>
           </View>
 

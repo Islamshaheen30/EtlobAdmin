@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Image } from 'expo-image';
 import {
   View, ScrollView, StyleSheet, Text, Pressable, TextInput,
@@ -59,100 +59,119 @@ export default function RestaurantsScreen() {
   };
 
   const handleEditRestaurant = (restaurant: Restaurant) => {
-    router.push({
-      pathname: '/restaurant-edit',
-      params: { restaurantId: restaurant.id },
-    });
+    router.push({ pathname: '/restaurant-edit', params: { restaurantId: restaurant.id } });
+  };
+
+  const handleOffers = (restaurant: Restaurant) => {
+    router.push({ pathname: '/offers', params: { restaurantId: restaurant.id } });
   };
 
   const renderItem = ({ item }: { item: Restaurant }) => {
-    const openStatus = calcRestaurantOpenStatus(item);
-    const isOpen = openStatus === 'open';
+    const opStatus = item.operational_status || 'open';
+    const opColor = opStatus === 'open' ? Colors.success : opStatus === 'busy' ? Colors.warning : Colors.danger;
+    const opLabel = opStatus === 'open'
+      ? (isRTL ? 'مفتوح' : 'Open')
+      : opStatus === 'busy'
+        ? (isRTL ? 'مشغول' : 'Busy')
+        : (isRTL ? 'مغلق' : 'Closed');
+
     return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {/* Header */}
-      <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        {item.logo_url ? (
-          <Image source={{ uri: item.logo_url }} style={styles.avatarImg} contentFit="cover" transition={200} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: Colors.brand }]}>
-            <Text style={styles.avatarText}>{item.name[0]}</Text>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Header */}
+        <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          {item.logo_url ? (
+            <Image source={{ uri: item.logo_url }} style={styles.avatarImg} contentFit="cover" transition={200} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: Colors.brand }]}>
+              <Text style={styles.avatarText}>{item.name[0]}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
+              {isRTL ? (item.name_ar || item.name) : item.name}
+            </Text>
+            <Text style={[styles.category, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
+              {item.category} · {item.area}
+            </Text>
           </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
-            {isRTL ? (item.name_ar || item.name) : item.name}
+          <View style={{ alignItems: 'flex-end', gap: 5 }}>
+            <StatusBadge status={item.status} label={statusLabel[item.status] || item.status} small />
+            {/* Operational status badge */}
+            <View style={[styles.openBadge, { backgroundColor: `${opColor}20`, borderColor: `${opColor}50` }]}>
+              <View style={[styles.openDot, { backgroundColor: opColor }]} />
+              <Text style={[styles.openBadgeText, { color: opColor }]}>{opLabel}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Stats Row */}
+        <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
+          <StatChip icon="star" value={item.rating?.toString() || '—'} label={t('rating')} color={Colors.brand} colors={colors} />
+          <StatChip icon="receipt-long" value={item.today_orders?.toString() || '0'} label={t('todayOrders')} color={Colors.info} colors={colors} />
+          <StatChip icon="radio-button-checked" value={`${item.delivery_radius ?? 5}km`} label={isRTL ? 'نطاق' : 'Radius'} color={Colors.info} colors={colors} />
+          <StatChip icon="hourglass-empty" value={`${item.prep_time_minutes ?? 30}m`} label={isRTL ? 'تحضير' : 'Prep'} color={Colors.warning} colors={colors} />
+        </View>
+
+        {/* Hours row */}
+        <View style={[styles.hoursRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
+          <MaterialIcons name="schedule" size={12} color={colors.icon} />
+          <Text style={[styles.hoursText, { color: colors.textMuted }]}>
+            {item.opening_hours || '09:00'} – {item.closing_hours || '22:00'}
           </Text>
-          <Text style={[styles.category, { color: colors.textMuted, textAlign: isRTL ? 'right' : 'left' }]}>
-            {item.category} · {item.area}
-          </Text>
+          {item.latitude && item.longitude ? (
+            <View style={[styles.overrideTag, { backgroundColor: `${Colors.info}15` }]}>
+              <MaterialIcons name="location-on" size={10} color={Colors.info} />
+              <Text style={[styles.overrideTagText, { color: Colors.info }]}>GPS</Text>
+            </View>
+          ) : null}
+          {item.is_open_override !== null && item.is_open_override !== undefined ? (
+            <View style={[styles.overrideTag, { backgroundColor: `${Colors.warning}20` }]}>
+              <MaterialIcons name="pan-tool" size={10} color={Colors.warning} />
+              <Text style={[styles.overrideTagText, { color: Colors.warning }]}>
+                {isRTL ? 'يدوي' : 'Manual'}
+              </Text>
+            </View>
+          ) : null}
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 5 }}>
-          <StatusBadge status={item.status} label={statusLabel[item.status] || item.status} small />
-          <View style={[styles.openBadge, { backgroundColor: isOpen ? `${Colors.success}20` : `${Colors.danger}15`, borderColor: isOpen ? `${Colors.success}50` : `${Colors.danger}40` }]}>
-            <View style={[styles.openDot, { backgroundColor: isOpen ? Colors.success : Colors.danger }]} />
-            <Text style={[styles.openBadgeText, { color: isOpen ? Colors.success : Colors.danger }]}>
-              {isOpen ? (isRTL ? 'مفتوح' : 'Open') : (isRTL ? 'مغلق' : 'Closed')}
-            </Text>
+
+        {/* Footer */}
+        <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
+          <View style={[styles.footerItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <MaterialIcons name="phone" size={13} color={colors.icon} />
+            <Text style={[styles.footerText, { color: colors.textMuted }]}>{item.phone || '—'}</Text>
+          </View>
+          <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: Spacing.xs }]}>
+            <Pressable
+              style={[styles.menuBtn, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+              onPress={() => handleEditRestaurant(item)}
+            >
+              <MaterialIcons name="edit" size={14} color={colors.icon} />
+              <Text style={[styles.menuBtnText, { color: colors.textSecondary }]}>
+                {isRTL ? 'تعديل' : 'Edit'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.menuBtn, { backgroundColor: `${Colors.info}18`, borderColor: `${Colors.info}44` }]}
+              onPress={() => handleOffers(item)}
+            >
+              <MaterialIcons name="local-offer" size={14} color={Colors.info} />
+              <Text style={[styles.menuBtnText, { color: Colors.info }]}>
+                {isRTL ? 'عروض' : 'Offers'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.menuBtn, { backgroundColor: `${Colors.brand}22`, borderColor: `${Colors.brand}55` }]}
+              onPress={() => handleManageMenu(item)}
+            >
+              <MaterialIcons name="restaurant-menu" size={14} color={Colors.brand} />
+              <Text style={[styles.menuBtnText, { color: Colors.brand }]}>
+                {isRTL ? 'القائمة' : 'Menu'}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>
-
-      {/* Stats Row */}
-      <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
-        <StatChip icon="star" value={item.rating?.toString() || '—'} label={t('rating')} color={Colors.brand} colors={colors} />
-        <StatChip icon="receipt-long" value={item.today_orders?.toString() || '0'} label={t('todayOrders')} color={Colors.info} colors={colors} />
-        <StatChip icon="receipt" value={item.total_orders?.toString() || '0'} label={isRTL ? 'إجمالي' : 'Total'} color={Colors.success} colors={colors} />
-        <StatChip icon="percent" value={`${item.commission}%`} label={t('commission')} color={Colors.warning} colors={colors} />
-      </View>
-
-      {/* Hours row */}
-      <View style={[styles.hoursRow, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
-        <MaterialIcons name="schedule" size={12} color={colors.icon} />
-        <Text style={[styles.hoursText, { color: colors.textMuted }]}>
-          {item.opening_hours || '09:00'} – {item.closing_hours || '22:00'}
-        </Text>
-        {item.is_open_override !== null && item.is_open_override !== undefined ? (
-          <View style={[styles.overrideTag, { backgroundColor: `${Colors.warning}20` }]}>
-            <MaterialIcons name="pan-tool" size={10} color={Colors.warning} />
-            <Text style={[styles.overrideTagText, { color: Colors.warning }]}>
-              {isRTL ? 'يدوي' : 'Manual'}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Footer */}
-      <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row', borderTopColor: colors.border }]}>
-        <View style={[styles.footerItem, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-          <MaterialIcons name="phone" size={13} color={colors.icon} />
-          <Text style={[styles.footerText, { color: colors.textMuted }]}>{item.phone || '—'}</Text>
-        </View>
-        <View style={[{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: Spacing.xs }]}>
-          {/* Edit Button */}
-          <Pressable
-            style={[styles.menuBtn, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
-            onPress={() => handleEditRestaurant(item)}
-          >
-            <MaterialIcons name="edit" size={14} color={colors.icon} />
-            <Text style={[styles.menuBtnText, { color: colors.textSecondary }]}>
-              {isRTL ? 'تعديل' : 'Edit'}
-            </Text>
-          </Pressable>
-          {/* Manage Menu Button */}
-          <Pressable
-            style={[styles.menuBtn, { backgroundColor: `${Colors.brand}22`, borderColor: `${Colors.brand}55` }]}
-            onPress={() => handleManageMenu(item)}
-          >
-            <MaterialIcons name="restaurant-menu" size={14} color={Colors.brand} />
-            <Text style={[styles.menuBtnText, { color: Colors.brand }]}>
-              {isRTL ? 'القائمة' : 'Menu'}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
+    );
   };
 
   return (
@@ -245,23 +264,20 @@ const styles = StyleSheet.create({
   cardHeader: { padding: Spacing.md, alignItems: 'center', gap: Spacing.sm },
   avatar: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#000', fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  avatarImg: { width: 44, height: 44, borderRadius: 22 },
   name: { fontSize: FontSize.base, fontWeight: FontWeight.bold },
   category: { fontSize: FontSize.xs, marginTop: 2 },
   statsRow: { flexDirection: 'row', borderTopWidth: 1, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
   footer: { borderTopWidth: 1, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, justifyContent: 'space-between', alignItems: 'center' },
   footerItem: { alignItems: 'center', gap: 4 },
   footerText: { fontSize: FontSize.xs },
-  menuBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: Radius.sm, borderWidth: 1 },
+  menuBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: Radius.sm, borderWidth: 1 },
   menuBtnText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
   empty: { alignItems: 'center', justifyContent: 'center', padding: Spacing.xxl, borderRadius: Radius.md, gap: Spacing.sm, marginTop: Spacing.xl },
   emptyText: { fontSize: FontSize.base },
-  // Avatar with logo support
-  avatarImg: { width: 44, height: 44, borderRadius: 22 },
-  // Open/Closed badge
   openBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: Radius.full, borderWidth: 1 },
   openDot: { width: 6, height: 6, borderRadius: 3 },
   openBadgeText: { fontSize: 10, fontWeight: FontWeight.bold },
-  // Hours row
   hoursRow: { alignItems: 'center', gap: Spacing.xs, paddingHorizontal: Spacing.md, paddingVertical: 6, borderTopWidth: 1 },
   hoursText: { fontSize: 10, flex: 1 },
   overrideTag: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: Radius.full },
