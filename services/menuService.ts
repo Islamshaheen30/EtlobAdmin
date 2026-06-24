@@ -22,7 +22,22 @@ export interface Restaurant {
   longitude?: number | null;
   delivery_radius?: number;
   prep_time_minutes?: number;
+  owner_username?: string;
+  owner_password?: string;
   created_at?: string;
+}
+
+export interface CreateRestaurantPayload {
+  name: string;
+  name_ar: string;
+  area: string;
+  logo_url?: string | null;
+  category?: string;
+  phone?: string;
+  status?: 'active' | 'inactive' | 'suspended';
+  operational_status?: 'open' | 'closed' | 'busy';
+  owner_username?: string;
+  owner_password?: string;
 }
 
 export interface Offer {
@@ -120,6 +135,33 @@ export const restaurantService = {
       .from('restaurants')
       .select('*')
       .order('name');
+    if (error) return { data: null, error: error.message };
+    return { data, error: null };
+  },
+
+  async create(payload: CreateRestaurantPayload): Promise<{ data: Restaurant | null; error: string | null }> {
+    const { data, error } = await getClient()
+      .from('restaurants')
+      .insert({
+        name: payload.name,
+        name_ar: payload.name_ar,
+        area: payload.area,
+        logo_url: payload.logo_url || null,
+        category: payload.category || 'General',
+        phone: payload.phone || '',
+        status: payload.status || 'active',
+        operational_status: payload.operational_status || 'open',
+        owner_username: payload.owner_username || '',
+        owner_password: payload.owner_password || '',
+        rating: 5.0,
+        total_orders: 0,
+        today_orders: 0,
+        commission: 15.0,
+        opening_hours: '09:00',
+        closing_hours: '22:00',
+      })
+      .select()
+      .single();
     if (error) return { data: null, error: error.message };
     return { data, error: null };
   },

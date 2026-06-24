@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   menuService, restaurantService,
   Restaurant, MenuCategory, MenuItem,
-  CreateMenuItemPayload, CreateCategoryPayload,
+  CreateMenuItemPayload, CreateCategoryPayload, CreateRestaurantPayload,
 } from '@/services/menuService';
 
 export function useRestaurantsManager() {
@@ -26,7 +26,14 @@ export function useRestaurantsManager() {
     return { error: null };
   }, []);
 
-  return { restaurants, loading, error, loadRestaurants, updateRestaurant };
+  const createRestaurant = useCallback(async (payload: CreateRestaurantPayload): Promise<{ data: Restaurant | null; error: string | null }> => {
+    const { data, error: err } = await restaurantService.create(payload);
+    if (err) return { data: null, error: err };
+    if (data) setRestaurants(prev => [data, ...prev]);
+    return { data, error: null };
+  }, []);
+
+  return { restaurants, loading, error, loadRestaurants, updateRestaurant, createRestaurant };
 }
 
 export function useMenuManager(restaurantId: string) {

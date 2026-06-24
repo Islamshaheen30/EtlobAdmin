@@ -1,5 +1,7 @@
 import { getSupabaseClient } from '@/template';
 
+export type StaffRole = 'accountant' | 'call_center' | 'restaurant_owner';
+
 export interface RestaurantStaff {
   id: string;
   restaurant_id: string;
@@ -7,7 +9,7 @@ export interface RestaurantStaff {
   name_ar: string;
   username: string;
   password_hash?: string;
-  role: 'accountant' | 'call_center';
+  role: StaffRole;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;
@@ -22,7 +24,7 @@ export interface CreateStaffPayload {
   name_ar: string;
   username: string;
   password: string;
-  role: 'accountant' | 'call_center';
+  role: StaffRole;
 }
 
 export interface UpdateStaffPayload {
@@ -30,7 +32,7 @@ export interface UpdateStaffPayload {
   name_ar?: string;
   username?: string;
   password?: string;
-  role?: 'accountant' | 'call_center';
+  role?: StaffRole;
   is_active?: boolean;
 }
 
