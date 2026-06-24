@@ -66,10 +66,6 @@ export default function RestaurantsScreen() {
     router.push({ pathname: '/offers', params: { restaurantId: restaurant.id } });
   };
 
-  const handleStaff = (restaurant: Restaurant) => {
-    router.push({ pathname: '/restaurant-staff', params: { restaurantId: restaurant.id } });
-  };
-
   const renderItem = ({ item }: { item: Restaurant }) => {
     const opStatus = item.operational_status || 'open';
     const opColor = opStatus === 'open' ? Colors.success : opStatus === 'busy' ? Colors.warning : Colors.danger;
@@ -170,15 +166,6 @@ export default function RestaurantsScreen() {
               <MaterialIcons name="restaurant-menu" size={14} color={Colors.brand} />
               <Text style={[styles.menuBtnText, { color: Colors.brand }]}>
                 {isRTL ? 'القائمة' : 'Menu'}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.menuBtn, { backgroundColor: `${Colors.success}18`, borderColor: `${Colors.success}44` }]}
-              onPress={() => handleStaff(item)}
-            >
-              <MaterialIcons name="people" size={14} color={Colors.success} />
-              <Text style={[styles.menuBtnText, { color: Colors.success }]}>
-                {isRTL ? 'موظفين' : 'Staff'}
               </Text>
             </Pressable>
           </View>
