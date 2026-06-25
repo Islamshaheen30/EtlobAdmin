@@ -33,10 +33,26 @@ export default function LoginScreen() {
     }
 
     setChecking(true);
-    const { error, user } = await signInWithPassword(email.trim().toLowerCase(), password);
-    if (error) {
+    const { error, user: signedInUser } = await signInWithPassword(email.trim().toLowerCase(), password);
+    
+    // Bypass "Email not confirmed" error for development
+    if (error && !error.includes('Email not confirmed')) {
       setChecking(false);
       showAlert(t('loginFailed'), error);
+      return;
+    }
+
+    // If there was an error but it was about confirmation, we still need a user object
+    // If signedInUser is null, we'll try to fetch the user session anyway
+    let user = signedInUser;
+    if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      user = session?.user || null;
+    }
+
+    // If we still have no user and the error wasn't about confirmation, stop
+    if (!user && error && !error.includes('Email not confirmed')) {
+      setChecking(false);
       return;
     }
 
