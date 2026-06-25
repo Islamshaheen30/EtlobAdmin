@@ -26,8 +26,15 @@ class SupabaseManager {
     try {
       console.log(`[Template:Client] Creating Supabase client instance #${this.creationCount}`);
       
-      const supabaseUrl = 'https://lqnnlcukvwrntkubtwtd.supabase.co';
-      const supabaseAnonKey = 'sb_publishable_OsJlUIdSD0nht54p7f_lDA_rxgABgsP';
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        const errorMsg = '[Template:Client] Supabase environment variables missing\n' +
+          'Please check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env file';
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
       
       if (this.creationCount > 1) {
         console.warn(`[Template:Client] ⚠️ Multiple client creation detected! This is creation #${this.creationCount}`);

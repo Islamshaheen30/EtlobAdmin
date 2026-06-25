@@ -1,4 +1,4 @@
-import { AlertProvider, AuthProvider } from '@/template';
+import { AlertProvider } from '@/template';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { AppProvider } from '@/contexts/AppContext';
@@ -9,22 +9,20 @@ export default function RootLayout() {
     <AlertProvider>
       <SafeAreaProvider>
         <AppProvider>
-          <AuthProvider>
-            <OrdersProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="login" options={{ headerShown: false }} />
-                <Stack.Screen name="rider-profile" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="menu-management" options={{ headerShown: false }} />
-                <Stack.Screen name="restaurant-edit" options={{ headerShown: false }} />
-                <Stack.Screen name="offers" options={{ headerShown: false }} />
-                <Stack.Screen name="admin-settings" options={{ headerShown: false }} />
-                <Stack.Screen name="restaurant-staff" options={{ headerShown: false }} />
-                <Stack.Screen name="delivery-pricing" options={{ headerShown: false }} />
-              </Stack>
-            </OrdersProvider>
-          </AuthProvider>
+          <OrdersProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="rider-profile" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="menu-management" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant-edit" options={{ headerShown: false }} />
+              <Stack.Screen name="offers" options={{ headerShown: false }} />
+              <Stack.Screen name="admin-settings" options={{ headerShown: false }} />
+              <Stack.Screen name="restaurant-staff" options={{ headerShown: false }} />
+              <Stack.Screen name="delivery-pricing" options={{ headerShown: false }} />
+            </Stack>
+          </OrdersProvider>
         </AppProvider>
       </SafeAreaProvider>
     </AlertProvider>

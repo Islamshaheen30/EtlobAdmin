@@ -7,14 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useAuth, useAlert } from '@/template';
 import { getSupabaseClient } from '@/template';
+import { useAlert } from '@/template';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme';
 import { useApp } from '@/hooks/useApp';
 
 export default function LoginScreen() {
-  const { signInWithPassword, operationLoading } = useAuth();
   const { showAlert } = useAlert();
   const { colors, theme, t, isRTL, toggleLanguage, toggleTheme, language } = useApp();
   const router = useRouter();
@@ -22,9 +21,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [checking, setChecking] = useState(false);
-
-  const supabase = getSupabaseClient();
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -32,32 +29,34 @@ export default function LoginScreen() {
       return;
     }
 
-    setChecking(true);
-    const { error, user: signedInUser } = await signInWithPassword(email.trim().toLowerCase(), password);
-    
-    // Bypass "Email not confirmed" error for development
-    if (error && !error.includes('Email not confirmed')) {
-      setChecking(false);
-      showAlert(t('loginFailed'), error);
-      return;
+    setLoading(true);
+
+    const supabase = getSupabaseClient();
+
+    // Sign in directly with Supabase — bypasses template's auth hook entirely
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
+
+    if (authError) {
+      // Allow login even if email is not confirmed (admin accounts)
+      if (!authError.message.includes('Email not confirmed')) {
+        setLoading(false);
+        showAlert(t('loginFailed'), authError.message);
+        return;
+      }
     }
 
-    // If there was an error but it was about confirmation, we still need a user object
-    // If signedInUser is null, we'll try to fetch the user session anyway
-    let user = signedInUser;
-    if (!user) {
-      const { data: { session } } = await supabase.auth.getSession();
-      user = session?.user || null;
+    // Get user from session if signIn returned one, otherwise fetch session
+    let userId = authData?.user?.id;
+    if (!userId) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      userId = sessionData?.session?.user?.id;
     }
 
-    // If we still have no user and the error wasn't about confirmation, stop
-    if (!user && error && !error.includes('Email not confirmed')) {
-      setChecking(false);
-      return;
-    }
-
-    if (!user) {
-      setChecking(false);
+    if (!userId) {
+      setLoading(false);
       showAlert(t('loginFailed'), t('loginError'));
       return;
     }
@@ -66,12 +65,12 @@ export default function LoginScreen() {
     const { data: adminRow } = await supabase
       .from('admins')
       .select('id, is_active')
-      .eq('id', user.id)
+      .eq('id', userId)
       .eq('is_active', true)
       .single();
 
     if (adminRow) {
-      setChecking(false);
+      setLoading(false);
       router.replace('/(tabs)');
       return;
     }
@@ -80,21 +79,19 @@ export default function LoginScreen() {
     const { data: riderRow } = await supabase
       .from('riders')
       .select('id')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     if (riderRow) {
-      setChecking(false);
+      setLoading(false);
       router.replace('/rider-profile');
       return;
     }
 
-    setChecking(false);
+    setLoading(false);
     showAlert(t('accessDenied'), t('notAuthorized'));
     await supabase.auth.signOut();
   };
-
-  const isLoading = operationLoading || checking;
 
   const fillDemo = () => {
     setEmail('Islam308@etlob.com');
@@ -167,7 +164,7 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   autoComplete="email"
-                  editable={!isLoading}
+                  editable={!loading}
                 />
               </View>
             </View>
@@ -187,7 +184,7 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPass}
                   autoComplete="password"
-                  editable={!isLoading}
+                  editable={!loading}
                 />
                 <Pressable onPress={() => setShowPass(v => !v)} hitSlop={8}>
                   <MaterialIcons name={showPass ? 'visibility-off' : 'visibility'} size={18} color={colors.icon} />
@@ -197,11 +194,11 @@ export default function LoginScreen() {
 
             {/* Submit */}
             <Pressable
-              style={[styles.btn, { backgroundColor: Colors.brand, opacity: isLoading ? 0.7 : 1 }]}
+              style={[styles.btn, { backgroundColor: Colors.brand, opacity: loading ? 0.7 : 1 }]}
               onPress={handleLogin}
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
+              {loading ? (
                 <ActivityIndicator size="small" color="#000" />
               ) : (
                 <>
