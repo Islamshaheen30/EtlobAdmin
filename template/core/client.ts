@@ -26,8 +26,8 @@ class SupabaseManager {
     try {
       console.log(`[Template:Client] Creating Supabase client instance #${this.creationCount}`);
       
-      const supabaseUrl = 'https://lqnnlcukvwrntkubtwtd.supabase.co';
-      const supabaseAnonKey = 'sb_publishable_OsJlUIdSD0nht54p7f_lDA_rxgABgsP';
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lqnnlcukvwrntkubtwtd.supabase.co';
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OsJlUIdSD0nht54p7f_lDA_rxgABgsP';
       
       if (this.creationCount > 1) {
         console.warn(`[Template:Client] ⚠️ Multiple client creation detected! This is creation #${this.creationCount}`);
