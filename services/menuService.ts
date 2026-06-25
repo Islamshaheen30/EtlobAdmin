@@ -152,7 +152,7 @@ export const restaurantService = {
         status: payload.status || 'active',
         operational_status: payload.operational_status || 'open',
         owner_username: payload.owner_username || '',
-        owner_password: payload.owner_password || '',
+        owner_password_hash: payload.owner_password || '', // Using hash field in DB
         rating: 5.0,
         total_orders: 0,
         today_orders: 0,
@@ -163,6 +163,12 @@ export const restaurantService = {
       .select()
       .single();
     if (error) return { data: null, error: error.message };
+    return { data, error: null };
+  },
+
+  async closeDailyAccounting() {
+    const { data, error } = await getClient().rpc('close_daily_accounts');
+    if (error) return { error: error.message };
     return { data, error: null };
   },
 
